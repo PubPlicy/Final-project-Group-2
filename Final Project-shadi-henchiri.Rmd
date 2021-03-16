@@ -1,0 +1,381 @@
+---
+title: "Dashboards World Bank Indicators"
+author: "Shadi Henchiri"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    social: menu
+    source_code: embed
+---
+```{r setup, include=FALSE}
+library(ggplot2)
+library(plotly)
+library(plyr)
+library(flexdashboard)
+library(sf)
+library(htmlwidgets)
+
+location="https://github.com/pubpolicy/PubPolicy-543/raw/main/"
+file="gbdChildMortality_2010s.csv"
+
+linkToFile=paste0(location,file)
+
+gdb=read.csv(linkToFile)
+
+location="https://github.com/pubpolicy/PubPolicy-543/raw/main/"
+file="gbdChildMortality_Modified_2010s.csv"
+
+linkToFile2=paste0(location,file)
+
+gdb2=read.csv(linkToFile2)
+
+
+linkCSV='https://github.com/pubpolicy/PubPolicy-543/raw/main/gbdChildMortality_2010s.csv'
+
+dataCSV=read.csv(linkCSV)
+location="https://github.com/pubpolicy/PubPolicy-543/raw/main/"
+file="WB_countries_Admin0_10m.json"
+
+linkToFile3=paste0(location,file)
+library(sf)
+mapWorld=read_sf(linkToFile3)
+
+
+```
+
+Static Plots
+=======================================================================
+
+Column {data-width=10}
+-------------------------------------
+
+
+```{r,fig.height=6, fig.width=11}
+
+library(reshape2)
+
+names(gdb2)[names(gdb2)=="neoMR"]<- "Neonates"
+names(gdb2)[names(gdb2)=="age1_5MR"]<- "Age 1 to 5 "
+names(gdb2)[names(gdb2)=="postneoMR"]<- "Post Neonatles"
+names(gdb2)[names(gdb2)=="under5MR"]<- "Under 5 years old"
+
+gdbL=melt(gdb2, # all the data
+           id.vars = 'gbdRegion') # unique id per row
+
+library(ggplot2)
+base = ggplot(data = gdbL, aes(x = variable,
+                                y =gbdRegion)) 
+
+heat1= base +  geom_tile(aes(fill = value)) 
+
+
+#inverse color -1
+heat2 = heat1 + scale_fill_gradient(low = 'grey',
+                                    high = "black")
+
+# change in REORDER
+base= ggplot(data = gdbL, aes(x = reorder(variable, 
+                                           value, median),
+                               y =reorder(gbdRegion,
+                                          value, median)))
+
+plot7=base + geom_tile(aes(fill = value)) + labs(title = "Cases of Infants Mortality by World Bank Regions in 2010", caption ="Source :World Bank 2010") +   scale_fill_gradient(low = 'grey90',high = "grey50") +
+    theme(legend.title=element_text(size=14),legend.text=element_text(size=13),plot.caption = element_text(vjust= -0.5, hjust = 1.7, size = 10, face = "bold"),plot.title = element_text(hjust = 0.5, size = 12, face = "bold"), axis.text.x = element_text(angle = 0, hjust = 0.5,vjust = 0.5,size = 11,face = 'bold'),
+              axis.text.y = element_text(size = 12,face = 'bold'))+ labs(fill=' Infants Mortality cases per 100.K ',
+                     x =NULL,
+                     y = NULL)
+
+plot7
+```
+
+
+Column {data-width=10}
+-------------------------------------
+
+
+
+```{r, fig.height=6, fig.width=10}
+
+
+# absolute values
+absoluteT=table(gdb$gbdRegion,
+                exclude = 'nothing') #include all!
+
+
+
+
+prop=prop.table(absoluteT)
+
+ToPlot=prop*100
+# as data frame
+tableFreq=as.data.frame(ToPlot)
+names(tableFreq)=c("Region","proportion")
+library(ggplot2)
+ base= ggplot(data = tableFreq, 
+             aes(x = Region,
+                 y = proportion))+ theme_classic()
+
+
+plot1 = base + geom_bar(fill ="blue",
+                        stat = 'identity') +
+  coord_flip()
+
+titleText='Distribution of countries by World Bank Regions'
+sourceText='Source: World Bank'
+
+plot2 = plot1 + labs(title=titleText,
+                     x =NULL,
+                     y = NULL,
+                     caption = sourceText)
+
+plot3 = plot2 + geom_hline(yintercept = 5.88, #where
+                           linetype="dashed", 
+                           size=1, #thickness
+                           alpha=0.5) #transparency
+
+library(scales) # for "unit_format""
+
+# customize Y axi
+plot4 = plot3 + scale_y_continuous(breaks=c(0,2,4,6,8,10,12),
+                                   limits = c(0,12), 
+                                  labels=unit_format(suffix = '%')) 
+
+
+
+plot5 = plot4 + theme(plot.caption = element_text(hjust = 1), 
+                      plot.title = element_text(hjust = 0.5))
+
+P=paste0(round(tableFreq$proportion,2), '%')
+
+LABELS=P
+plot6 = plot5 + geom_text(vjust=0.5, #hjust if flipping
+                          size = 1,
+                          aes(y = proportion ,
+                              label = LABELS))
+
+tableFreq=tableFreq[order(tableFreq$proportion),]
+
+
+regionOrd=tableFreq[order(tableFreq$proportion),'Region']
+
+LABELS=paste0(round(tableFreq$proportion,2), '%')
+
+base= ggplot(data = tableFreq, 
+             aes(x = region,
+                 y = proportion)) 
+
+
+base= base + scale_x_discrete(limits=regionOrd) 
+
+base= base +theme_classic()
+   
+
+base= ggplot(data = tableFreq, 
+             aes(x = Region,
+                 y = proportion))
+base = base + scale_x_discrete(limits=regionOrd)
+
+
+plot1 = base + geom_bar(fill ="blue",
+                        stat = 'identity') +
+  coord_flip()
+
+
+titleText='Distribution of countries by World Bank Regions'
+sourceText='Source: World Bank'
+
+plot2 = plot1 + labs(title=titleText,
+                     x =NULL,
+                     y = NULL,
+                     caption = sourceText)
+
+
+plot3 = plot2 
+
+
+plot4 = plot3 + scale_y_continuous(breaks=c(0,2,4,6,8,10,12),
+                                   limits = c(0,13), 
+                                   labels=unit_format(suffix = '%')) 
+
+
+plot5 = plot4 + theme(plot.caption = element_text(hjust = 1,face = 'bold', size = 10), 
+                      plot.title = element_text(hjust = 0.5, size = 15, face = 'bold'))+ theme(axis.text.x = element_text(angle = 0, 
+                                         hjust = 0.55,
+                                         size = 15, face = "bold"),
+              axis.text.y = element_text(size = 13, face = "bold"))
+
+
+plot6 = plot5 + geom_text(vjust=0.5,hjust=-0.1, #hjust if flipping
+                          size = 5,
+                          aes(y = proportion ,
+                              label = LABELS))
+plot6 #+ coord_flip() # wanna flip the plot?
+
+```
+
+
+
+
+
+row {data-width=10}
+-------------------------------------
+
+
+
+
+```{r , fig.height=6, fig.width=12}
+
+
+
+linkCSV='https://github.com/pubpolicy/PubPolicy-543/raw/main/gbdChildMortality_2010s.csv'
+
+dataCSV=read.csv(linkCSV)
+
+location="https://github.com/pubpolicy/PubPolicy-543/raw/main/"
+file="WB_countries_Admin0_10m.json"
+
+linkToFile=paste0(location,file)
+
+# import
+library(sf)
+
+mapWorld=read_sf(linkToFile)
+
+mapWorldVars=merge(mapWorld, #map first
+                   dataCSV, 
+                   by.x='ISO_A3', by.y='iso')
+
+library(ggplot2)
+# plot original map
+base=ggplot(data=mapWorld) + geom_sf(fill='grey90',
+                                     color=NA) + theme_classic()
+
+titleText='Distribution of countries by World Bank Economy Classification'
+sourceText='Source: World Bank'
+colMap= base + geom_sf(data=mapWorldVars,
+                       aes(fill=ECONOMY),
+                       color=NA) + labs(title=titleText,
+                     x =NULL,
+                     y = NULL,
+                     subtitle = "Source: World Bank 2010")+ theme(legend.title.align = 0.5,legend.title=element_text(margin = margin(t = 10),size=10, face = "bold"),legend.text=element_text(size=10, face = "bold"),plot.caption = element_text(hjust = 2,face = 'bold',size = 10), 
+                      plot.title = element_text(hjust = 1, size = 15,face = "bold"),legend.key.size = unit(0.7, "cm"))+ theme(axis.text.x = element_text(angle = 0, 
+                                         hjust = 1,
+                                         size = 15, face = "bold"),
+              axis.text.y = element_text(size = 15, face = "bold"))
+
+
+colMap
+
+
+```
+
+                   
+                
+Interactive Plots
+=======================================================================
+
+Column {data-width=500}
+-------------------------------------
+
+```{r,fig.height=6, fig.width= 10}
+library(htmlwidgets)
+base= ggplot(data = gdbL, aes(x = reorder(variable, 
+                                           value, median),
+                               y =reorder(gbdRegion,
+                                          value, median)))
+
+
+plot10 =base + geom_tile(aes(fill = value)) + labs(title = "Cases of Infants Mortality by World Bank Regions in 2010", caption ="Source :World Bank 2010") 
+Plot11 = plot10 +   scale_fill_gradient(low = 'grey90',high = "grey50") 
+
+plot12 = Plot11 + theme(legend.title=element_text(size=0),legend.text=element_text(size=0),plot.caption = element_text(hjust = 1.3, size = 7, face = "bold"),plot.title = element_text(hjust = 0.5, size = 11, face = "bold"), axis.text.x = element_text(angle = 0, hjust = 0.5,vjust = 0.5,size = 10,face = 'bold'),
+              axis.text.y = element_text(size = 8,face = 'bold'))
+plot7= plot12 +  labs(fill=' Infants Mortality cases in 2010 ',
+                     x =NULL,
+                     y = NULL)
+plot7%>%ggplotly()
+
+
+```
+
+
+row {data-width=450}
+-------------------------------------
+
+
+```{r, fig.height=6, fig.width=10}
+
+plot5 = plot4 + theme(plot.caption = element_text(hjust = 3,face = 'bold', size = 8), 
+                      plot.title = element_text(hjust = 0.5, size = 15, face = 'bold'))+ theme(axis.text.x = element_text(angle = 0, 
+                                         hjust = 3,
+                                         size = 12, face = "bold"),
+              axis.text.y = element_text(size = 13, face = "bold"))
+
+
+plot7 = plot5 + geom_text(vjust=0.5,hjust= 4, #hjust if flipping
+                          size = 4,
+                          aes(y = proportion ,
+                              label = LABELS))
+ #+ coord_flip() # wanna flip the plot?
+plot7%>%ggplotly()
+
+```
+
+row {data-width=450}
+-------------------------------------
+
+```{r, fig.height=6, fig.width=10}
+library(ggplot2)
+library(plotly)
+library(plyr)
+library(flexdashboard)
+library(sf)
+library(htmlwidgets)
+
+linkCSV='https://github.com/pubpolicy/PubPolicy-543/raw/main/COVID-19%20cases%20and%20testing%20by%20County.csv'
+
+dataCSV=read.csv(linkCSV)
+
+
+
+location="https://github.com/pubpolicy/PubPolicy-543/raw/main/"
+file="WA_County_Boundaries.json"
+
+linkToFile=paste0(location,file)
+
+# import
+library(sf)
+
+
+mapCounty=read_sf(linkToFile)
+
+mapWorldVars=merge(mapCounty, #map first
+                   dataCSV, 
+                   by.x='JURISDIC_2',by.y='JURLBL')
+
+
+library(ggplot2)
+# plot original map
+base=ggplot(data=mapCounty) + geom_sf(fill='grey90',
+                                     color=NA) + theme_classic()
+
+titleText='COVID-19 testing rates in Washington State by county'
+sourceText='Source: Washington Department of Natural Resource'
+colMap= base + geom_sf(data=mapWorldVars,
+                    aes(fill= Average.daily.COVID.19.testing.rate.per.100K.people),
+                       color='black') + labs(title=titleText,subtitle = sourceText,
+                     x =NULL,
+                     y = NULL,
+                     caption = sourceText)+ scale_fill_gradient(low = 'blue',
+                             high= 'red')
+colMap2= colMap + theme(legend.title=element_text(size=10, face = 'bold'),plot.title = element_text(vjust = -80,  hjust = 10, size = 13, face = "bold"))
+
+
+colMap2%>%ggplotly()
+
+
+```
+
+
+
+
